@@ -1,11 +1,12 @@
 (ns synergy-events-stdlib.core
   (:require [synergy-specs.events :as synspec]
-             [cognitect.aws.client.api :as aws]
+            [cognitect.aws.client.api :as aws]
             [clojure.data.json :as json]
-             [taoensso.timbre :as timbre
-              :refer [log trace debug info warn error fatal report
-                      logf tracef debugf infof warnf errorf fatalf reportf
-                      spy get-env]]))
+            [taoensso.timbre :as timbre
+             :refer [log trace debug info warn error fatal report
+                     logf tracef debugf infof warnf errorf fatalf reportf
+                     spy get-env]]
+            [clojure.spec.alpha :as s]))
 
 (def eventTopicParameters {
                            :arn-prefix "synergyDispatchTopicArnRoot"
@@ -38,11 +39,12 @@
   (let [return-status-map {:status status-code :description status-message :return-value return-value}]
     return-status-map))
 
-(defn set-up-topic-table [arnPrefixAtom eventStoreTopicAtom]
+(defn set-up-topic-table [arnPrefixAtom eventStoreTopicAtom thisSSM]
+  "Set up reference atoms based on items retrieved from AWS SSM"
   (reset! arnPrefixAtom "")
   (reset! eventStoreTopicAtom "")
   (info "Routing table not found - setting up (probably first run for this Lambda instance")
-  (let [route-paraneters (getEventTopicParameters ssm)]
+  (let [route-paraneters (getEventTopicParameters thisSSM)]
     (setArnPrefix route-paraneters arnPrefixAtom)
     (setEventStoreTopic route-paraneters eventStoreTopicAtom)))
 
@@ -72,6 +74,42 @@
     (gen-status-map false "invalid-inbound-message" (s/explain-data ::synspec/synergyEvent inbound-message))))
 
 
+(defn check-event-type [event]
+  "Deduce what type of AWS event triggered the Lambda, based on message field content"
+  (let [checkRecordType (get event :Records)
+        evCheck1 (get (first (get event :Records)) :eventSource)
+        evCheck2 (get (first (get event :Records)) :EventSource)
+        srcCheck (get event :source)
+        routeKeyCheck (get event :routeKey)
+        ]
+    (cond (and (not (nil? checkRecordType)) (= evCheck1 "aws:sqs"))
+          "SQS"
+          (and (not (nil? checkRecordType)) (= evCheck1 "aws:s3"))
+          "S3"
+          (and (not (nil? checkRecordType)) (= evCheck2 "aws:sns"))
+          "SNS"
+          (and (nil? checkRecordType) (= srcCheck "aws.events"))
+          "Cloudwatch"
+          (and (nil? checkRecordType) (not (nil? routeKeyCheck)))
+          "APIGateway"
+          :else
+          "NOTKNOWN")))
+
+(defn get-event-data [event src-type]
+  "Extract the data from an inbound message based on the event type"
+  (cond (= src-type "SNS")
+        (get (get (first (get event :Records)) :Sns) :Message)
+        (= src-type "SQS")
+        (get (first (get event :Records)) :body)
+        (= src-type "S3")
+        (first (get event :Records))
+        (= src-type "Cloudwatch")
+        event
+        (= src-type "APIGateway")
+        {:routeKey (get event :routeKey)
+         :body (get event :body)}
+        :else
+        nil))
 
 
 

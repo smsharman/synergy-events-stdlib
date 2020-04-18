@@ -1,4 +1,4 @@
-(defproject synergy-events-stdlib "0.1.0"
+(defproject synergy-events-stdlib "0.1.3"
   :description "Synergy Event Integration Architecture standard library"
   :url "http://synergyxm.ai/synergy-events-stdlib"
   :license {:name "Hackthorn Innovation Ltd"
