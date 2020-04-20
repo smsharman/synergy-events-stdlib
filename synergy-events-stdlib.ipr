@@ -95,6 +95,34 @@
       <JAVADOC />
       <SOURCES />
     </library>
+    <library name="Leiningen: com.taoensso/encore:2.91.0">
+      <CLASSES>
+        <root url="jar://$MAVEN_REPOSITORY$/com/taoensso/encore/2.91.0/encore-2.91.0.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+    </library>
+    <library name="Leiningen: com.taoensso/timbre:4.10.0">
+      <CLASSES>
+        <root url="jar://$MAVEN_REPOSITORY$/com/taoensso/timbre/4.10.0/timbre-4.10.0.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+    </library>
+    <library name="Leiningen: com.taoensso/truss:1.5.0">
+      <CLASSES>
+        <root url="jar://$MAVEN_REPOSITORY$/com/taoensso/truss/1.5.0/truss-1.5.0.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+    </library>
+    <library name="Leiningen: io.aviso/pretty:0.1.33">
+      <CLASSES>
+        <root url="jar://$MAVEN_REPOSITORY$/io/aviso/pretty/0.1.33/pretty-0.1.33.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+    </library>
     <library name="Leiningen: nrepl:0.6.0">
       <CLASSES>
         <root url="jar://$MAVEN_REPOSITORY$/nrepl/nrepl/0.6.0/nrepl-0.6.0.jar!/" />
@@ -144,9 +172,9 @@
       <JAVADOC />
       <SOURCES />
     </library>
-    <library name="Leiningen: org.clojure/data.json:1.0.0">
+    <library name="Leiningen: org.clojure/data.json:0.2.6">
       <CLASSES>
-        <root url="jar://$MAVEN_REPOSITORY$/org/clojure/data.json/1.0.0/data.json-1.0.0.jar!/" />
+        <root url="jar://$MAVEN_REPOSITORY$/org/clojure/data.json/0.2.6/data.json-0.2.6.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES />

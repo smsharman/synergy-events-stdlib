@@ -1,22 +1,38 @@
 # synergy-events-stdlib
 
-A Clojure library designed to ... well, that part is up to you.
+This library provides common functions for the Synergy Integration Architecture for retrieving and storing config
+info, sending events to topics and so on
 
 ## Usage
 
-FIXME
+set-up-topic-table [arnPrefixAtom eventStoreTopicAtom thisSSM] - set the default ARN and Event Store atoms passed in 
+using values retrieved from AWS SSM. thisSSM is a Cognitect AWS library ssm instance.
+
+set-up-route-table [routeTableAtom thisSSM thisS3] - look up S3 bucket and routing table filename from AWS SSM, retrieve
+the routing table JSON, convert to a map and assign that map to the atom passed as routeTableAtom. thisSSM and thisS3 are
+Cognitect AWS ssm and s3 clients
+
+gen-status-map [status-code status-message return-value] - pass in a map of status code (true/false), a status string
+e.g. "failed-validation" and an arbitrary map of status indicators; return a standard status map in format:
+
+{:status true/false :status-message "message" :return-value {:key1 "val2" :key2 "val2"}
+
+send-to-topic [topic event arnPrefix thisSNS note] - send the standard Synergy message format event **event** 
+to the topic identified by **arnPrefix:topic** using a Cognitect AWS sns client instantiated into thisSNS. The value of
+**note** is used in the log written as the message is dispatched.  
+
+send-to-topic [topic event arnPrefix thisSNS] - as above, but with the **note** field set to ""
+
+validate-message [inbound-message] - validate the Synergy namespaced format message passed in against the standard 
+message spec. Return a status map (as above) with the result - if the message does not validate, then the return-value 
+includes the output of the explain? function to explain the validation failure
+
+check-event-type [event] - pass in an arriving event, and this function will identify it as one of the following SQS, SNS, 
+S3, Cloudwatch (timer) or HTTP API (from the API gateway)
+
+get-event-data [event src-type] - pass in the source event and the event-type as above, and this function returns the body 
+content of the event passed in
 
 ## License
 
-Copyright © 2020 FIXME
-
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+Copyright © 2020 Hackthorn Imagineering Ltd
