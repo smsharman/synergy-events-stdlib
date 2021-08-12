@@ -2,7 +2,7 @@
   (:require [synergy-specs.events :as synspec]
             [cognitect.aws.client.api :as aws]
             [clojure.data.json :as json]
-            [taoensso.timbre :as timbre
+            [taoensso.timbre
              :refer [log trace debug info warn error fatal report
                      logf tracef debugf infof warnf errorf fatalf reportf
                      spy get-env]]
@@ -19,19 +19,23 @@
                            :filename "synergyDispatchRoutingTable"
                            })
 
-(defn getRouteTableParametersFromSSM [thisSSM]
+(defn- invoke-aws-get-parameter-value [thisSSM table parameter]
+  (let [aws-response (aws/invoke thisSSM {:op      :GetParameter
+                                          :request {:Name (get table parameter)}})]
+    (get-in aws-response [:Parameter :Value]))
+  )
+
+(defn- get-route-table-parameters-from-SSM
   "Look up values in the SSM parameter store to be later used by the routing table"
-  (let [tableBucket (get-in (aws/invoke thisSSM {:op :GetParameter
-                                             :request {:Name (get routeTableParameters :bucket)}})
-                            [:Parameter :Value])
-        tableFilename (get-in (aws/invoke thisSSM {:op :GetParameter
-                                               :request {:Name (get routeTableParameters :filename)}})
-                              [:Parameter :Value])]
-    ;; //TODO: add error handling so if for any reason we can't get the values, this is noted
+  [thisSSM]
+  (let [tableBucket (invoke-aws-get-parameter-value thisSSM routeTableParameters :bucket)
+        tableFilename (invoke-aws-get-parameter-value thisSSM routeTableParameters :filename)]
+    (comment "TODO: add error handling so if for any reason we can't get the values, this is noted")
     {:tableBucket tableBucket :tableFilename tableFilename}))
 
-(defn loadRouteTable [parameter-map thisRouteTable thisS3]
+(defn- load-route-table
   "Load routing table from S3, input is a map with :tableBucket :tableFilename and :snsPrefix"
+  [parameter-map thisRouteTable thisS3]
   ;; Get file from S3 and turn it into a map
   (let [tableBucket (get parameter-map :tableBucket)
         tableFilename (get parameter-map :tableFilename)
@@ -40,55 +44,54 @@
                                                       :request {:Bucket tableBucket :Key tableFilename}}) :Body)) :key-fn keyword)]
     (swap! thisRouteTable merge @thisRouteTable rawRouteMap)))
 
-(defn getEventTopicParameters [thisSSM]
+(defn- get-event-topic-parameters
   "Look up values in the SSM parameter store to be later used by the routing table"
-  (let [snsPrefix (get-in (aws/invoke thisSSM {:op :GetParameter
-                                               :request {:Name (get eventTopicParameters :arn-prefix)}})
-                          [:Parameter :Value])
-        evStoreTopic (get-in (aws/invoke thisSSM {:op :GetParameter
-                                                  :request {:Name (get eventTopicParameters :event-store-topic)}})
-                             [:Parameter :Value])
-        ]
-    ;; //TODO: add error handling so if for any reason we can't get the values, this is noted
+  [thisSSM]
+  (let [snsPrefix (invoke-aws-get-parameter-value thisSSM eventTopicParameters :arn-prefix)
+        evStoreTopic (invoke-aws-get-parameter-value thisSSM eventTopicParameters :event-store-topic)]
+    (comment "TODO: add error handling so if for any reason we can't get the values, this is noted")
     {:snsPrefix snsPrefix :eventStoreTopic evStoreTopic}))
 
-(defn setEventStoreTopic [parameter-map eventStoreAtom]
+(defn- set-event-store-topic
   "Set the eventStoreTopic atom with the required value"
+  [parameter-map eventStoreAtom]
   (swap! eventStoreAtom str (get parameter-map :eventStoreTopic)))
 
-(defn setArnPrefix [parameter-map arnPrefixAtom]
+(defn- set-arn-prefix
   "Set the snsArnPrefix atom with the required value"
+  [parameter-map arnPrefixAtom]
   (swap! arnPrefixAtom str (get parameter-map :snsPrefix)))
 
-(defn generate-lambda-return [statuscode message]
+(defn generate-lambda-return
   "Generate a simple Lambda status return"
+  [statuscode message]
   {:status statuscode :message message})
 
-(defn gen-status-map
+(defn- gen-status-map
   "Generate a status map from the values provided"
   [status-code status-message return-value]
-  (let [return-status-map {:status status-code :description status-message :return-value return-value}]
-    return-status-map))
+   {:status status-code :description status-message :return-value return-value})
 
-(defn set-up-topic-table [arnPrefixAtom eventStoreTopicAtom thisSSM]
+(defn set-up-topic-table
   "Set up reference atoms based on items retrieved from AWS SSM"
+  [arnPrefixAtom eventStoreTopicAtom thisSSM]
   (reset! arnPrefixAtom "")
   (reset! eventStoreTopicAtom "")
   (info "Topic atoms not found - setting up (probably first run for this Lambda instance")
-  (let [route-parameters (getEventTopicParameters thisSSM)]
-    (setArnPrefix route-parameters arnPrefixAtom)
-    (setEventStoreTopic route-parameters eventStoreTopicAtom)))
+  (let [route-parameters (get-event-topic-parameters thisSSM)]
+    (set-arn-prefix route-parameters arnPrefixAtom)
+    (set-event-store-topic route-parameters eventStoreTopicAtom)))
 
 (defn set-up-route-table [routeTableAtom thisSSM thisS3]
   (reset! routeTableAtom {})
   (info "Routing table not found - setting up (probably first run for this Lambda instance")
-  (let [route-paraneters (getRouteTableParametersFromSSM thisSSM)]
-    (loadRouteTable route-paraneters routeTableAtom thisS3)))
+  (let [route-parameters (get-route-table-parameters-from-SSM thisSSM)]
+    (load-route-table route-parameters routeTableAtom thisS3)))
 
 
 (defn send-to-topic
-  ([thisTopic thisEvent arnPrefix thisSNS]
-   (send-to-topic thisTopic thisEvent arnPrefix thisSNS ""))
+  ([topic event arnPrefix thisSNS]
+   (send-to-topic topic event arnPrefix thisSNS ""))
   ([topic event arnPrefix thisSNS note]
    (let [thisEventId (get event ::synspec/eventId)
          jsonEvent (json/write-str event)
@@ -111,8 +114,9 @@
     (gen-status-map false "invalid-inbound-message" (s/explain-data ::synspec/synergyEvent inbound-message))))
 
 
-(defn check-event-type [event]
+(defn check-event-type
   "Deduce what type of AWS event triggered the Lambda, based on message field content"
+  [event]
   (let [checkRecordType (get event :Records)
         evCheck1 (get (first (get event :Records)) :eventSource)
         evCheck2 (get (first (get event :Records)) :EventSource)
@@ -132,8 +136,9 @@
           :else
           "NOTKNOWN")))
 
-(defn get-event-data [event src-type]
+(defn get-event-data
   "Extract the data from an inbound message based on the event type"
+  [event src-type]
   (cond (= src-type "SNS")
         (get (get (first (get event :Records)) :Sns) :Message)
         (= src-type "SQS")
