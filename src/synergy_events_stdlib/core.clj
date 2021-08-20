@@ -30,7 +30,7 @@
   [thisSSM]
   (let [tableBucket (invoke-aws-get-parameter-value thisSSM routeTableParameters :bucket)
         tableFilename (invoke-aws-get-parameter-value thisSSM routeTableParameters :filename)]
-    (comment "TODO: add error handling so if for any reason we can't get the values, this is noted")
+    ;; //TODO: add error handling so if for any reason we can't get the values, this is noted
     {:tableBucket tableBucket :tableFilename tableFilename}))
 
 (defn- load-route-table
@@ -49,7 +49,7 @@
   [thisSSM]
   (let [snsPrefix (invoke-aws-get-parameter-value thisSSM eventTopicParameters :arn-prefix)
         evStoreTopic (invoke-aws-get-parameter-value thisSSM eventTopicParameters :event-store-topic)]
-    (comment "TODO: add error handling so if for any reason we can't get the values, this is noted")
+    ;; //TODO: add error handling so if for any reason we can't get the values, this is noted
     {:snsPrefix snsPrefix :eventStoreTopic evStoreTopic}))
 
 (defn- set-event-store-topic
@@ -67,7 +67,7 @@
   [statuscode message]
   {:status statuscode :message message})
 
-(defn- gen-status-map
+(defn gen-status-map
   "Generate a status map from the values provided"
   [status-code status-message return-value]
    {:status status-code :description status-message :return-value return-value})
@@ -118,40 +118,38 @@
   "Deduce what type of AWS event triggered the Lambda, based on message field content"
   [event]
   (let [checkRecordType (get event :Records)
-        evCheck1 (get (first (get event :Records)) :eventSource)
-        evCheck2 (get (first (get event :Records)) :EventSource)
+        evCheck1 (-> event (get :Records) first (get :eventSource))
+        evCheck2 (-> event (get :Records) first (get :EventSource))
         srcCheck (get event :source)
-        routeKeyCheck (get event :routeKey)
-        ]
-    (cond (and (not (nil? checkRecordType)) (= evCheck1 "aws:sqs"))
-          "SQS"
-          (and (not (nil? checkRecordType)) (= evCheck1 "aws:s3"))
-          "S3"
-          (and (not (nil? checkRecordType)) (= evCheck2 "aws:sns"))
-          "SNS"
-          (and (nil? checkRecordType) (= srcCheck "aws.events"))
-          "Cloudwatch"
-          (and (nil? checkRecordType) (not (nil? routeKeyCheck)))
-          "APIGateway"
-          :else
-          "NOTKNOWN")))
+        routeKeyCheck (get event :routeKey)]
+    (if (not (nil? checkRecordType))
+      (cond (= evCheck1 "aws:sqs")
+            :sqs
+            (= evCheck1 "aws:s3")
+            :s3
+            (= evCheck2 "aws:sns")
+            :sns
+            (= srcCheck "aws.events")
+            :cloudwatch
+            (not (nil? routeKeyCheck))
+            :api-gateway
+            :else
+            :not-known
+            )
+      :not-known)))
 
 (defn get-event-data
   "Extract the data from an inbound message based on the event type"
   [event src-type]
-  (cond (= src-type "SNS")
-        (get (get (first (get event :Records)) :Sns) :Message)
-        (= src-type "SQS")
-        (get (first (get event :Records)) :body)
-        (= src-type "S3")
-        (first (get event :Records))
-        (= src-type "Cloudwatch")
-        event
-        (= src-type "APIGateway")
-        {:routeKey (get event :routeKey)
-         :body (get event :body)}
-        :else
-        nil))
+  (case src-type
+    :sns (-> event (get :Records) first (get-in [:Sns :Message]))
+    :sqs (-> event (get :Records) first (get :body))
+    :s3 (-> event (get :Records) first)
+    :cloudwatch event
+    :api-gateway {:routeKey (get event :routeKey)
+                  :body (get event :body)}
+    nil
+    ))
 
 
 
