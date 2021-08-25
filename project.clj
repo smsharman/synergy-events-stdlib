@@ -5,7 +5,7 @@
             :url ""}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/data.json "0.2.6"]
-                 [synergy-specs "0.1.8"]
+                 [synergy-specs "0.1.9"]
                  [org.clojure/tools.reader "1.3.2"]
                  [com.taoensso/timbre "4.10.0"]
                  [com.cognitect.aws/api "0.8.456"]
