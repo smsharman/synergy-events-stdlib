@@ -1,8 +1,7 @@
 (ns synergy-events-stdlib.core-test
   (:require [clojure.test :refer :all]
             [synergy-events-stdlib.core :refer :all]
-            [cognitect.aws.client.api :as aws]
-            [clojure.data.json :as json]))
+            [cognitect.aws.client.api :as aws]))
 
 (def ns-valid-message {
                        :synergy-specs.events/eventId "7a5a815b-2e52-4d40-bec8-c3fc06edeb36"
@@ -156,13 +155,3 @@
  (#'synergy-events-stdlib.core/get-event-topic-parameters ssm)
 
  (#'synergy-events-stdlib.core/get-route-table-parameters-from-SSM ssm))
-
-(comment
- (let [event (json/read-str " {\n \"eventVersion \": \"1.05 \", \n \"userIdentity \": {\n \"type \": \"IAMUser \", \n \"principalId \": \"AKIAIOSFODNN7EXAMPLE \", \n \"arn \": \"arn:aws:iam::123456789012:user/Mary_Major \", \n \"accountId \": \"123456789012 \", \n \"userName \": \"Mary_Major \" \n}, \n \"eventTime \": \"2019-06-10T17:14:09Z \", \n \"eventSource \": \"signin.amazonaws.com \", \n \"eventName \": \"ConsoleLogin \", \n \"awsRegion \": \"us-east-1 \", \n \"sourceIPAddress \": \"203.0.113.67 \", \n \"userAgent \": \"Mozilla/5.0 (Windows NT 10.0 ; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0\",\n    \"requestParameters\": null,\n    \"responseElements\": {\n        \"ConsoleLogin\": \"Success\"\n    },\n    \"additionalEventData\": {\n        \"LoginTo\": \"https://console.aws.amazon.com/console/home?state=hashArgs%23&isauthcode=true\",\n        \"MobileVersion\": \"No\",\n        \"MFAUsed\": \"No\"\n    },\n    \"eventID\": \"2681fc29-EXAMPLE\",\n    \"eventType\": \"AwsConsoleSignIn\",\n    \"recipientAccountId\": \"123456789012\"\n}" :key-fn keyword)]
-   (println event))
-
- (let [event (json/read (io/reader "test/resources/sns-input-message.json") :key-fn keyword)]
-   (println event))
-
- (let [event (-> "test/resources/sns-input-message.json" slurp (json/read-str :key-fn keyword))]
-   (println event)))

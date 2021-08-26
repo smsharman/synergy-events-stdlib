@@ -1,7 +1,7 @@
 (ns synergy-events-stdlib.core
   (:require [synergy-specs.events :as synspec]
             [cognitect.aws.client.api :as aws]
-            [clojure.data.json :as json]
+            [cheshire.core :as json]
             [taoensso.timbre
              :refer [log trace debug info warn error fatal report
                      logf tracef debugf infof warnf errorf fatalf reportf
@@ -39,9 +39,9 @@
   ;; Get file from S3 and turn it into a map
   (let [tableBucket (get parameter-map :tableBucket)
         tableFilename (get parameter-map :tableFilename)
-        rawRouteMap (json/read (io/reader
+        rawRouteMap (json/parse-stream (io/reader
                                  (get (aws/invoke thisS3 {:op :GetObject
-                                                      :request {:Bucket tableBucket :Key tableFilename}}) :Body)) :key-fn keyword)]
+                                                      :request {:Bucket tableBucket :Key tableFilename}}) :Body)) true)]
     (swap! thisRouteTable merge @thisRouteTable rawRouteMap)))
 
 (defn- get-event-topic-parameters
@@ -94,7 +94,7 @@
    (send-to-topic topic event arnPrefix thisSNS ""))
   ([topic event arnPrefix thisSNS note]
    (let [thisEventId (get event ::synspec/eventId)
-         jsonEvent (json/write-str event)
+         jsonEvent (json/generate-string event {:pretty true})
          eventSNS (str arnPrefix topic)
          snsSendResult (aws/invoke thisSNS {:op :Publish :request {:TopicArn eventSNS
                                                                    :Message  jsonEvent}})]
