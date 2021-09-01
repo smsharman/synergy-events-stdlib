@@ -12,6 +12,7 @@ pom.xml.asc
 .hg/
 **/*.ipr
 **/*.iml
+/.idea
 
 # Default ignored files
 /synergy-events-stdlib.iws
