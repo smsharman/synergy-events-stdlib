@@ -23,6 +23,21 @@ This library provides common functions for the Synergy Integration Architecture 
 
 *get-event-data [event src-type]* - pass in the source event and the event-type as above, and this function returns the body content of the event passed in.
 
+== Run Tests
+----
+clj -X:test
+----
+
+== Build Uberjar
+----
+clj -T:build uberjar
+----
+
+== Deploy to Clojars (signed release):
+----
+clj -T:build deploy
+----
+
 == License
 
 Copyright © 2020 Hackthorn Imagineering Ltd
